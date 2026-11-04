@@ -25,13 +25,9 @@ import {
   RefreshCw,
   Layers,
   Calendar,
-  Package,
   LogOut,
-  ChevronRight,
-  Database,
   Clock,
   BookOpen,
-  Sparkles,
 } from "lucide-react";
 
 interface ParsedFileItem {
@@ -40,7 +36,7 @@ interface ParsedFileItem {
   name: string;
   size: number;
   headers: string[];
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   phoneColumn: string;
   trackingColumn: string;
   year: number;
@@ -104,6 +100,24 @@ export default function AdminPortalPage() {
   const [purgeDays, setPurgeDays] = useState(30);
   const [batchActionMsg, setBatchActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const loadBatches = async () => {
+    setIsLoadingBatches(true);
+    setBatchActionMsg(null);
+    try {
+      const res = await getBatchesAction();
+      if (res.success && res.batches) {
+        setBatches(res.batches);
+        setTotalParcelsCount(res.totalParcelsCount || 0);
+      } else if (res.error) {
+        setBatchActionMsg({ type: "error", text: res.error });
+      }
+    } catch {
+      setBatchActionMsg({ type: "error", text: "Failed to load batches" });
+    } finally {
+      setIsLoadingBatches(false);
+    }
+  };
+
   // Check auth status on load
   useEffect(() => {
     async function checkAuth() {
@@ -135,24 +149,6 @@ export default function AdminPortalPage() {
     setIsAuthenticated(false);
     setPasscode("");
     setFiles([]);
-  };
-
-  const loadBatches = async () => {
-    setIsLoadingBatches(true);
-    setBatchActionMsg(null);
-    try {
-      const res = await getBatchesAction();
-      if (res.success && res.batches) {
-        setBatches(res.batches);
-        setTotalParcelsCount(res.totalParcelsCount || 0);
-      } else if (res.error) {
-        setBatchActionMsg({ type: "error", text: res.error });
-      }
-    } catch {
-      setBatchActionMsg({ type: "error", text: "Failed to load batches" });
-    } finally {
-      setIsLoadingBatches(false);
-    }
   };
 
   const buildTag = (year: number, month: string, material: string) => {
@@ -188,7 +184,7 @@ export default function AdminPortalPage() {
 
       try {
         let headers: string[] = [];
-        let rows: Record<string, any>[] = [];
+        let rows: Record<string, unknown>[] = [];
 
         if (ext === "csv") {
           const text = await file.text();
@@ -197,13 +193,13 @@ export default function AdminPortalPage() {
             skipEmptyLines: true,
           });
           headers = parsed.meta.fields || [];
-          rows = parsed.data as Record<string, any>[];
+          rows = parsed.data as Record<string, unknown>[];
         } else if (ext === "xlsx" || ext === "xls") {
           const buffer = await file.arrayBuffer();
           const workbook = XLSX.read(buffer, { type: "array" });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, {
+          const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
             defval: "",
           });
           if (jsonData.length > 0) {

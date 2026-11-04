@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ParcelSearchResult, getLiveTrackingAction } from "@/app/actions/tracking";
-import { SLPostTrackingResult, SLPostTrackingEvent } from "@/lib/slpost";
+import { SLPostTrackingResult } from "@/lib/slpost";
 import {
   translateEventDescription,
   translateStatus,
@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ExternalLink,
   MapPin,
-  Calendar,
   AlertCircle,
   Sparkles,
 } from "lucide-react";
@@ -29,19 +28,12 @@ interface ParcelCardProps {
   index: number;
 }
 
-export function ParcelCard({ parcel, isLatest, index }: ParcelCardProps) {
+export function ParcelCard({ parcel, isLatest }: ParcelCardProps) {
   const [isExpanded, setIsExpanded] = useState(isLatest);
   const [liveStatus, setLiveStatus] = useState<SLPostTrackingResult | null>(null);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
-
-  // Fetch live SL Post status when expanded
-  useEffect(() => {
-    if (isExpanded && !hasFetched && parcel.tracking_code) {
-      fetchLiveTracking();
-    }
-  }, [isExpanded, hasFetched, parcel.tracking_code]);
 
   const fetchLiveTracking = async () => {
     setIsLoadingLive(true);
@@ -60,6 +52,17 @@ export function ParcelCard({ parcel, isLatest, index }: ParcelCardProps) {
       setIsLoadingLive(false);
     }
   };
+
+  // Fetch live SL Post status when expanded
+  useEffect(() => {
+    if (isExpanded && !hasFetched && parcel.tracking_code) {
+      const timer = setTimeout(() => {
+        fetchLiveTracking();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded, hasFetched, parcel.tracking_code]);
 
   const copyToClipboard = async (e: React.MouseEvent) => {
     e.stopPropagation();

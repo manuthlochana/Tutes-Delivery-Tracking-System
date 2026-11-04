@@ -23,7 +23,6 @@ export function TrackingSearch() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [results, setResults] = useState<ParcelSearchResult[] | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchedQuery, setSearchedQuery] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -38,7 +37,6 @@ export function TrackingSearch() {
     startTransition(async () => {
       const res = await searchParcelAction(query);
       setHasSearched(true);
-      setSearchedQuery(query);
 
       if (!res.success) {
         setErrorMsg(res.error || "සොයාගැනීමේදී දෝෂයක් සිදුවිය.");
@@ -70,7 +68,7 @@ export function TrackingSearch() {
       <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-lg dark:shadow-black/40">
         <form onSubmit={handleSearch} className="space-y-3.5">
           <label className="block text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-200">
-            දුරකථන අංකය (Student Mobile Number)
+            දුරකථන අංකය (Mobile Number)
           </label>
 
           <div className="relative flex items-center">
@@ -227,7 +225,7 @@ export function TrackingSearch() {
       {/* Security & Privacy Notice */}
       <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500 text-center px-2">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-        <span>End-to-End Encrypted Search &bull; Masked Privacy Protection &bull; Zero Public Scraping</span>
+        <span>Masked Student Privacy &bull; Zero Public Scraping</span>
       </div>
     </div>
   );

@@ -144,7 +144,7 @@ export async function getBatchesAction() {
     }
 
     // Get total count of parcels
-    const { count, error: countErr } = await supabase
+    const { count } = await supabase
       .from("parcels")
       .select("*", { count: "exact", head: true });
 

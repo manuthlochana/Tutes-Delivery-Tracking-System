@@ -53,7 +53,7 @@ export default function Home() {
           </h2>
 
           <p className="text-xs sm:text-base text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto font-medium leading-relaxed">
-            ඔබ පන්තියට ලියාපදිංචි කළ දුරකථන අංකය ඇතුළත් කර ශ්‍රී ලංකා තැපැල් (SL Post) හරහා ඔබේ Tute Pack එක මේ වන විට පවතින ස්ථානය සජීවීව දැනගන්න.
+            ලියාපදිංචි දුරකථන අංකය ඇතුළත් කර ශ්‍රී ලංකා තැපැල් (SL Post) හරහා ඔබේ Tute Pack එකේ සජීවී තත්ත්වය දැනගන්න.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function Home() {
             </div>
             <div>
               <div className="text-xs font-bold text-zinc-900 dark:text-white">ක්ෂණික සෙවීම</div>
-              <div className="text-[10px] text-zinc-500 font-medium">Ultra-fast direct DB lookup</div>
+              <div className="text-[10px] text-zinc-500 font-medium">Direct DB lookup</div>
             </div>
           </div>
 
@@ -78,7 +78,7 @@ export default function Home() {
             </div>
             <div>
               <div className="text-xs font-bold text-zinc-900 dark:text-white">Live SL Post Status</div>
-              <div className="text-[10px] text-zinc-500 font-medium">Real-time domestic tracking</div>
+              <div className="text-[10px] text-zinc-500 font-medium">Real-time postal tracking</div>
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default function Home() {
             </div>
             <div>
               <div className="text-xs font-bold text-zinc-900 dark:text-white">දත්ත රහස්‍යතාව</div>
-              <div className="text-[10px] text-zinc-500 font-medium">Masked student privacy shield</div>
+              <div className="text-[10px] text-zinc-500 font-medium">Masked privacy shield</div>
             </div>
           </div>
         </div>
@@ -96,9 +96,23 @@ export default function Home() {
 
       {/* Public Footer */}
       <footer className="w-full border-t border-zinc-200 dark:border-zinc-800 py-5 text-center text-xs text-zinc-500 dark:text-zinc-400">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1.5">
-          <span>&copy; 2026 A/L Mass Media - Suranga Gamage. All rights reserved.</span>
-          <span>Sri Lanka Post Domestic Postal Network</span>
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-center sm:text-left">
+            <span>&copy; 2026 A/L Mass Media - Suranga Gamage. All rights reserved.</span>
+            <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">&bull;</span>
+            <span>Sri Lanka Post Domestic Postal Network</span>
+          </div>
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            Built by{" "}
+            <a
+              href="https://www.itsmanuth.dev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors underline-offset-4 hover:underline font-medium"
+            >
+              Thunder Storm Studio
+            </a>
+          </div>
         </div>
       </footer>
     </div>
