@@ -29,11 +29,9 @@ import {
   LogOut,
   ChevronRight,
   Database,
-  ArrowUpRight,
   Clock,
-  Check,
-  X,
-  FileCheck,
+  BookOpen,
+  Sparkles,
 } from "lucide-react";
 
 interface ParsedFileItem {
@@ -45,12 +43,38 @@ interface ParsedFileItem {
   rows: Record<string, any>[];
   phoneColumn: string;
   trackingColumn: string;
+  year: number;
+  month: string;
+  materialType: string;
   monthTag: string;
   status: "ready" | "uploading" | "completed" | "error";
   progress: number;
   uploadedCount?: number;
   errorMessage?: string;
 }
+
+const MONTHS_LIST = [
+  { value: "ජනවාරි", label: "ජනවාරි (January)" },
+  { value: "පෙබරවාරි", label: "පෙබරවාරි (February)" },
+  { value: "මාර්තු", label: "මාර්තු (March)" },
+  { value: "අප්‍රේල්", label: "අප්‍රේල් (April)" },
+  { value: "මැයි", label: "මැයි (May)" },
+  { value: "ජූනි", label: "ජූනි (June)" },
+  { value: "ජූලි", label: "ජූලි (July)" },
+  { value: "අගෝස්තු", label: "අගෝස්තු (August)" },
+  { value: "සැප්තැම්බර්", label: "සැප්තැම්බර් (September)" },
+  { value: "ඔක්තෝබර්", label: "ඔක්තෝබර් (October)" },
+  { value: "නොවැම්බර්", label: "නොවැම්බර් (November)" },
+  { value: "දෙසැම්බර්", label: "දෙසැම්බර් (December)" },
+];
+
+const MATERIAL_TYPES = [
+  "නිබන්ධන (Tute Pack)",
+  "Revision Tutes",
+  "Past Papers",
+  "Model Papers",
+  "Special Workshop Tute",
+];
 
 export default function AdminPortalPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -66,6 +90,12 @@ export default function AdminPortalPage() {
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [overallProgress, setOverallProgress] = useState<number>(0);
   const [isUploadingAll, setIsUploadingAll] = useState(false);
+
+  // Global batch defaults for quick multi-file configuration
+  const currentYear = 2026;
+  const [globalYear, setGlobalYear] = useState<number>(currentYear);
+  const [globalMonth, setGlobalMonth] = useState<string>("නොවැම්බර්");
+  const [globalMaterial, setGlobalMaterial] = useState<string>("නිබන්ධන (Tute Pack)");
 
   // Batches state
   const [batches, setBatches] = useState<BatchRecord[]>([]);
@@ -125,10 +155,9 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Current Month/Year Tag helper (e.g. "November 2026")
-  const defaultMonthTag = () => {
-    const d = new Date();
-    return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+  const buildTag = (year: number, month: string, material: string) => {
+    const cleanMaterial = material.split(" ")[0]; // e.g. "නිබන්ධන"
+    return `${year} ${month} ${cleanMaterial}`;
   };
 
   // Header column auto-detect heuristics
@@ -142,11 +171,10 @@ export default function AdminPortalPage() {
     const trackingRegex = /track|bg|code|waybill|barcode|postal|delivery|slip|කේතය/i;
     const match = headers.find((h) => trackingRegex.test(h));
     if (match) return match;
-    // Look for second column as fallback
     return headers.length > 1 ? headers[1] : headers[0] || "";
   };
 
-  // Handle multi-file selection (supports 5-6 files simultaneously)
+  // Handle multi-file selection (supports 5 to 6 files simultaneously)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -185,6 +213,10 @@ export default function AdminPortalPage() {
         }
 
         if (headers.length > 0) {
+          const y = globalYear;
+          const m = globalMonth;
+          const mat = globalMaterial;
+
           newItems.push({
             id: `${file.name}-${Date.now()}-${i}`,
             file,
@@ -194,7 +226,10 @@ export default function AdminPortalPage() {
             rows,
             phoneColumn: detectPhoneColumn(headers),
             trackingColumn: detectTrackingColumn(headers),
-            monthTag: defaultMonthTag(),
+            year: y,
+            month: m,
+            materialType: mat,
+            monthTag: buildTag(y, m, mat),
             status: "ready",
             progress: 0,
           });
@@ -206,21 +241,48 @@ export default function AdminPortalPage() {
 
     setFiles((prev) => [...prev, ...newItems]);
     setIsProcessingFiles(false);
-    e.target.value = ""; // Reset input
+    e.target.value = "";
   };
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const updateFileConfig = (
+  const updateFileMeta = (
     id: string,
-    updates: Partial<Pick<ParsedFileItem, "phoneColumn" | "trackingColumn" | "monthTag">>
+    updates: Partial<Pick<ParsedFileItem, "phoneColumn" | "trackingColumn" | "year" | "month" | "materialType">>
   ) => {
-    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+    setFiles((prev) =>
+      prev.map((f) => {
+        if (f.id !== id) return f;
+        const newYear = updates.year !== undefined ? updates.year : f.year;
+        const newMonth = updates.month !== undefined ? updates.month : f.month;
+        const newMat = updates.materialType !== undefined ? updates.materialType : f.materialType;
+        return {
+          ...f,
+          ...updates,
+          year: newYear,
+          month: newMonth,
+          materialType: newMat,
+          monthTag: buildTag(newYear, newMonth, newMat),
+        };
+      })
+    );
   };
 
-  // Upload a single file
+  const applyGlobalConfigToAll = () => {
+    setFiles((prev) =>
+      prev.map((f) => ({
+        ...f,
+        year: globalYear,
+        month: globalMonth,
+        materialType: globalMaterial,
+        monthTag: buildTag(globalYear, globalMonth, globalMaterial),
+      }))
+    );
+  };
+
+  // Upload single file
   const uploadSingleFile = async (item: ParsedFileItem): Promise<boolean> => {
     if (!item.phoneColumn || !item.trackingColumn) {
       setFiles((prev) =>
@@ -233,12 +295,10 @@ export default function AdminPortalPage() {
       return false;
     }
 
-    // Set file status to uploading
     setFiles((prev) =>
       prev.map((f) => (f.id === item.id ? { ...f, status: "uploading", progress: 10 } : f))
     );
 
-    // Prepare parcel items
     const parcels: ParcelInsertItem[] = [];
     for (const row of item.rows) {
       const rawPhone = String(row[item.phoneColumn] || "").trim();
@@ -345,7 +405,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Loading state
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
@@ -354,7 +413,7 @@ export default function AdminPortalPage() {
     );
   }
 
-  // 1. Gatekeeper Passcode Form
+  // 1. Passcode Gatekeeper
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4">
@@ -364,16 +423,16 @@ export default function AdminPortalPage() {
             <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-emerald-400 shadow-inner">
               <Lock className="w-7 h-7" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">System Security Gate</h1>
+            <h1 className="text-xl font-bold tracking-tight">Admin Gate &bull; Suranga Gamage Media</h1>
             <p className="text-xs text-zinc-400">
-              Restricted Portal: Enter authorized security passcode to access batch manager.
+              Enter secret passcode to access batch manager and SL Post dispatch upload system.
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="mt-8 space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
-                Secret Passcode
+                Admin Passcode
               </label>
               <input
                 type="password"
@@ -415,18 +474,18 @@ export default function AdminPortalPage() {
   // 2. Authenticated Admin Dashboard
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
-      {/* Top Navigation */}
+      {/* Top Header */}
       <header className="border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-              <Database className="w-5 h-5" />
+              <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <div className="text-sm font-bold flex items-center gap-2">
-                <span>Dispatch Manager</span>
+                <span>Suranga Gamage Media &bull; Tute Dispatch</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
-                  Secured Portal
+                  SL Post Bulk Manager
                 </span>
               </div>
               <div className="text-[11px] text-zinc-400">
@@ -447,7 +506,7 @@ export default function AdminPortalPage() {
         </div>
       </header>
 
-      {/* Tabs Subheader */}
+      {/* Tabs */}
       <div className="border-b border-zinc-800/60 bg-zinc-900/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-6">
           <button
@@ -481,9 +540,93 @@ export default function AdminPortalPage() {
 
       {/* Main Tab Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full space-y-6">
-        {/* Tab 1: Multi-File Uploader & Dynamic Column Mapping */}
+        {/* Tab 1: Multi-File Uploader with Month/Year Pickers */}
         {activeTab === "uploader" && (
           <div className="space-y-6">
+            {/* Global Month/Year Batch Picker Bar */}
+            <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  <Calendar className="w-4 h-4" />
+                  <span>Batch Tag Selector (Year & Month Pickers)</span>
+                </div>
+                {files.length > 0 && (
+                  <button
+                    onClick={applyGlobalConfigToAll}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline"
+                  >
+                    Apply to all {files.length} queued files
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
+                {/* Year Select */}
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                    Year (වර්ෂය)
+                  </label>
+                  <select
+                    value={globalYear}
+                    onChange={(e) => setGlobalYear(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {[2025, 2026, 2027, 2028].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Month Select */}
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                    Month (අදාළ මාසය)
+                  </label>
+                  <select
+                    value={globalMonth}
+                    onChange={(e) => setGlobalMonth(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {MONTHS_LIST.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Material Type */}
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                    Material Type (කාණ්ඩය)
+                  </label>
+                  <select
+                    value={globalMaterial}
+                    onChange={(e) => setGlobalMaterial(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {MATERIAL_TYPES.map((mat) => (
+                      <option key={mat} value={mat}>
+                        {mat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Generated Batch Tag Preview */}
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                    Generated Batch Tag
+                  </label>
+                  <div className="px-3 py-2 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-xs font-bold text-emerald-400 font-mono truncate">
+                    {buildTag(globalYear, globalMonth, globalMaterial)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* File Dropzone */}
             <div className="border-2 border-dashed border-zinc-800 hover:border-emerald-500/50 rounded-3xl p-8 text-center bg-zinc-900/30 hover:bg-zinc-900/60 transition-all cursor-pointer relative">
               <input
@@ -503,11 +646,11 @@ export default function AdminPortalPage() {
                     Select 5 to 6 Excel (`.xlsx`, `.xls`) or `.csv` files
                   </h3>
                   <p className="text-xs text-zinc-400 mt-1">
-                    Drag and drop or click to browse. Each file can have completely different column headers.
+                    Drag and drop or click to browse. Files can have different headers.
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 text-[11px] font-semibold text-zinc-300">
-                  <span>Auto-detects phone & tracking columns</span>
+                  <span>Auto-detects phone & SL Post tracking barcode columns</span>
                 </div>
               </div>
             </div>
@@ -516,7 +659,7 @@ export default function AdminPortalPage() {
             {files.length > 0 && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4">
                 <div className="text-xs text-zinc-400">
-                  <span className="font-bold text-white text-sm">{files.length} File(s)</span> queued for column mapping and batch insertion.
+                  <span className="font-bold text-white text-sm">{files.length} File(s)</span> ready for column confirmation and Supabase upload.
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -536,7 +679,7 @@ export default function AdminPortalPage() {
                     {isUploadingAll ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Uploading Batches ({overallProgress}%)...</span>
+                        <span>Uploading ({overallProgress}%)...</span>
                       </>
                     ) : (
                       <>
@@ -559,7 +702,7 @@ export default function AdminPortalPage() {
               </div>
             )}
 
-            {/* File Cards with Dynamic Column Mapping */}
+            {/* File Cards with Dynamic Column Mapping & Month Pickers */}
             <div className="space-y-4">
               {files.map((item) => (
                 <div
@@ -586,7 +729,6 @@ export default function AdminPortalPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      {/* Status indicator */}
                       {item.status === "completed" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-semibold">
                           <CheckCircle className="w-3.5 h-3.5" />
@@ -630,7 +772,7 @@ export default function AdminPortalPage() {
                     </div>
                   </div>
 
-                  {/* Error display if any */}
+                  {/* Error display */}
                   {item.errorMessage && (
                     <div className="p-3 rounded-xl bg-red-950/40 border border-red-900/60 text-red-400 text-xs flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -638,16 +780,16 @@ export default function AdminPortalPage() {
                     </div>
                   )}
 
-                  {/* Dynamic Column Selectors */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                  {/* Column Mapping & Month Tag Customizers */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-1">
                     {/* Dropdown 1: Phone Column */}
                     <div>
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                        Phone Number Column
+                        Phone Column
                       </label>
                       <select
                         value={item.phoneColumn}
-                        onChange={(e) => updateFileConfig(item.id, { phoneColumn: e.target.value })}
+                        onChange={(e) => updateFileMeta(item.id, { phoneColumn: e.target.value })}
                         disabled={item.status === "completed" || item.status === "uploading"}
                         className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl text-xs font-medium text-white focus:outline-none"
                       >
@@ -658,18 +800,18 @@ export default function AdminPortalPage() {
                         ))}
                       </select>
                       <div className="text-[10px] text-zinc-500 mt-1">
-                        Auto-detected: <span className="text-zinc-300 font-mono">{item.phoneColumn}</span>
+                        Auto: <span className="text-zinc-300 font-mono">{item.phoneColumn}</span>
                       </div>
                     </div>
 
-                    {/* Dropdown 2: Tracking / BG Code Column */}
+                    {/* Dropdown 2: Tracking Column */}
                     <div>
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                         Tracking / BG Code Column
                       </label>
                       <select
                         value={item.trackingColumn}
-                        onChange={(e) => updateFileConfig(item.id, { trackingColumn: e.target.value })}
+                        onChange={(e) => updateFileMeta(item.id, { trackingColumn: e.target.value })}
                         disabled={item.status === "completed" || item.status === "uploading"}
                         className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl text-xs font-medium text-white focus:outline-none"
                       >
@@ -680,30 +822,55 @@ export default function AdminPortalPage() {
                         ))}
                       </select>
                       <div className="text-[10px] text-zinc-500 mt-1">
-                        Auto-detected: <span className="text-zinc-300 font-mono">{item.trackingColumn}</span>
+                        Auto: <span className="text-zinc-300 font-mono">{item.trackingColumn}</span>
                       </div>
                     </div>
 
-                    {/* Batch / Month Tag */}
+                    {/* File-specific Month Picker */}
                     <div>
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                        Month / Batch Tag
+                        Month Selection
+                      </label>
+                      <select
+                        value={item.month}
+                        onChange={(e) => updateFileMeta(item.id, { month: e.target.value })}
+                        disabled={item.status === "completed" || item.status === "uploading"}
+                        className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl text-xs font-medium text-white focus:outline-none"
+                      >
+                        {MONTHS_LIST.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="text-[10px] text-zinc-500 mt-1">
+                        Year: <span className="font-semibold text-zinc-300">{item.year}</span>
+                      </div>
+                    </div>
+
+                    {/* Final Batch Tag Preview */}
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Final Batch Tag
                       </label>
                       <input
                         type="text"
                         value={item.monthTag}
-                        onChange={(e) => updateFileConfig(item.id, { monthTag: e.target.value })}
+                        onChange={(e) =>
+                          setFiles((prev) =>
+                            prev.map((f) => (f.id === item.id ? { ...f, monthTag: e.target.value } : f))
+                          )
+                        }
                         disabled={item.status === "completed" || item.status === "uploading"}
-                        placeholder="e.g. November 2026"
-                        className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl text-xs font-medium text-white focus:outline-none"
+                        className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl text-xs font-bold text-emerald-400 font-mono focus:outline-none"
                       />
                       <div className="text-[10px] text-zinc-500 mt-1">
-                        Tag displayed to customer
+                        Editable tag
                       </div>
                     </div>
                   </div>
 
-                  {/* Data Preview (First 3 rows) */}
+                  {/* Data Preview */}
                   <div className="mt-3 bg-zinc-950/70 border border-zinc-800/80 rounded-xl p-3 overflow-x-auto text-[11px]">
                     <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                       Sample Data Preview (First {Math.min(item.rows.length, 3)} rows):
@@ -711,7 +878,7 @@ export default function AdminPortalPage() {
                     <table className="w-full text-left font-mono">
                       <thead>
                         <tr className="border-b border-zinc-800 text-zinc-400">
-                          <th className="pb-1.5 pr-4 font-semibold">Row</th>
+                          <th className="pb-1.5 pr-4 font-semibold">#</th>
                           <th className="pb-1.5 pr-4 font-semibold text-emerald-400">
                             Phone ({item.phoneColumn})
                           </th>
@@ -747,7 +914,7 @@ export default function AdminPortalPage() {
         {/* Tab 2: Uploaded Batches & Purge Old Data */}
         {activeTab === "batches" && (
           <div className="space-y-6">
-            {/* Action & Purge Toolbar */}
+            {/* Toolbar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
               <div className="flex items-center gap-3">
                 <button
@@ -765,7 +932,7 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              {/* Purge older than 30 days */}
+              {/* Purge older than X days */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300">
                   <Clock className="w-3.5 h-3.5 text-zinc-500" />
@@ -786,7 +953,7 @@ export default function AdminPortalPage() {
                   className="px-4 py-2 bg-red-950/60 hover:bg-red-900/60 border border-red-800/80 text-red-300 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Purge Old Data</span>
+                  <span>Purge Old Batches</span>
                 </button>
               </div>
             </div>

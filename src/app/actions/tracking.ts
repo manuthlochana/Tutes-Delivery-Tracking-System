@@ -2,6 +2,7 @@
 
 import { createPublicServerClient } from "@/lib/supabase/server";
 import { sanitizeSearchQuery } from "@/lib/phone";
+import { trackSLPostBarcode, SLPostTrackingResult } from "@/lib/slpost";
 
 export interface ParcelSearchResult {
   tracking_code: string;
@@ -100,6 +101,30 @@ export async function searchParcelAction(queryPhone: string): Promise<SearchActi
     return {
       success: false,
       error: "සම්බන්ධතා දෝෂයකි. කරුණාකර මොහොතකින් නැවත උත්සාහ කරන්න.",
+    };
+  }
+}
+
+export async function getLiveTrackingAction(
+  barcode: string
+): Promise<SLPostTrackingResult> {
+  try {
+    if (!barcode || typeof barcode !== "string") {
+      return {
+        barcode: "",
+        status: "Not Found",
+        events: [],
+        error: "Valid barcode is required",
+      };
+    }
+    return await trackSLPostBarcode(barcode.trim());
+  } catch (err: unknown) {
+    console.error("Error in getLiveTrackingAction:", err);
+    return {
+      barcode,
+      status: "Not Found",
+      events: [],
+      error: err instanceof Error ? err.message : "Failed to query SL Post",
     };
   }
 }
